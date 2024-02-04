@@ -21,7 +21,7 @@ class ClubsSpider(BaseSpider):
         """Checks whether a table is expected to contain teams information
         or not, by looking for the word 'Club' in the table headers.
         """
-        return True if table.css('th::text')[0].get().lower() == 'club' else False
+        return True if table.css('th::text') and table.css('th::text')[0].get().lower() == 'club' else False
 
     def extract_team_href(row):
         """It extracts one team's href from a teams' table row"""
@@ -34,20 +34,21 @@ class ClubsSpider(BaseSpider):
     with_teams_info = [
         table for table in page_tables if is_teams_table(table)
     ]
-    assert(len(with_teams_info) == 1)
-    for row in with_teams_info[0].css('tbody tr'):
-        href = extract_team_href(row)
-        href_strip_season = re.sub('/saison_id/[0-9]{4}$', '', href)
+    # assert(len(with_teams_info) == 1)
+    if len(with_teams_info) > 0:
+      for row in with_teams_info[0].css('tbody tr'):
+          href = extract_team_href(row)
+          href_strip_season = re.sub('/saison_id/[0-9]{4}$', '', href)
 
-        cb_kwargs = {
-          'base' : {
-            'type': 'club',
-            'href': href_strip_season,
-            'parent': parent
+          cb_kwargs = {
+            'base' : {
+              'type': 'club',
+              'href': href_strip_season,
+              'parent': parent
+            }
           }
-        }
 
-        yield response.follow(href, self.parse_details, cb_kwargs=cb_kwargs)
+          yield response.follow(href, self.parse_details, cb_kwargs=cb_kwargs)
 
   def parse_details(self, response, base):
     """Extract club details from the main page.
@@ -90,13 +91,13 @@ class ClubsSpider(BaseSpider):
       response.xpath("//li[contains(text(),'National team players:')]/span/a/text()").get()
     )
 
-    stadium_element = response.xpath("//li[contains(text(),'Stadium:')]")[0]
+    stadium_element = response.xpath("//li[contains(text(),'Stadium:')]")
     attributes['stadium_name'] = self.safe_strip(
-      stadium_element.xpath("span/a/text()").get()
-    )
+      stadium_element[0].xpath("span/a/text()").get()
+    ) if stadium_element else ''
     attributes['stadium_seats'] = self.safe_strip(
-      stadium_element.xpath("span/span/text()").get()
-    )
+      stadium_element[0].xpath("span/span/text()").get()
+    ) if stadium_element else ''
 
     attributes['net_transfer_record'] = self.safe_strip(
       response.xpath("//li[contains(text(),'Current transfer record:')]/span/span/a/text()").get()

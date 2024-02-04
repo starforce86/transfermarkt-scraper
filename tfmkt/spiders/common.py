@@ -1,3 +1,4 @@
+import logging
 from io import BufferedReader
 import scrapy
 from scrapy import Request
@@ -9,6 +10,9 @@ import gzip
 import typing
 
 default_base_url = 'https://www.transfermarkt.co.uk'
+logging.basicConfig(
+    filename="log.txt", format="%(levelname)s: %(message)s", level=logging.INFO
+)
 
 def read_lines(file_name: str, reading_fn: typing.Callable[[str], BufferedReader]) -> typing.List[dict]:
   """A function that reads JSON lines from a file.
@@ -63,7 +67,7 @@ class BaseSpider(scrapy.Spider):
     if season:
       self.season = season
     else:
-      self.season = 2022
+      self.season = 2010
 
     self.entrypoints = parents
 
@@ -79,8 +83,8 @@ class BaseSpider(scrapy.Spider):
 
     for item in self.entrypoints:
       # clubs extraction is best done on first_tier competition types only
-      if self.name == 'clubs' and item['competition_type'] != 'first_tier':
-        continue
+      # if self.name == 'clubs' and item['competition_type'] != 'first_tier':
+      #   continue
       item['seasoned_href'] = self.seasonize_entrypoin_href(item)
       applicable_items.append(item)
 
