@@ -11,7 +11,9 @@ from inflection import parameterize, underscore
 class CompetitionsSpider(BaseSpider):
     name = 'competitions'
 
+    domestic_competitions = {}
     international_competitions = {}
+    inactive_competitions = {}
 
     def parse(self, response, parent):
         pages = response.css('div.pager').css('li.tm-pagination__list-item a::attr("href")').getall()
@@ -78,7 +80,18 @@ class CompetitionsSpider(BaseSpider):
                 }
             }
 
-            yield response.follow(self.base_url + href, self.parse_competitions, cb_kwargs=cb_kwargs)
+            yield response.follow(self.base_url + href, self.parse_seasons, cb_kwargs=cb_kwargs)
+
+    def parse_seasons(self, response, base):
+        for season in range(2023, 1869, -1):
+            href = f"/wettbewerbe/national/wettbewerbe/{base['country_id']}/plus/0?saison_id={season}"
+            yield response.follow(
+                self.base_url + href,
+                self.parse_competitions,
+                cb_kwargs={
+                    'base': base
+                }
+            )
 
     def parse_competitions(self, response, base):
         """Parse competitions from the country competitions page.
@@ -124,32 +137,42 @@ class CompetitionsSpider(BaseSpider):
 
         # parse domestic competitions
 
-        box = relevant_boxes[domestic_competitions_tag]
-        box_body = box.xpath('div[@class="responsive-table"]//tbody')[0]
-        box_rows = box_body.xpath('tr')
+        if relevant_boxes.get(domestic_competitions_tag):
+            box = relevant_boxes[domestic_competitions_tag]
+            box_body = box.xpath('div[@class="responsive-table"]//tbody')[0]
+            box_rows = box_body.xpath('tr')
 
-        competitions[parameterized_domestic_competitions_tag] = []
+            competitions[parameterized_domestic_competitions_tag] = []
+            parameterized_tier = ''
 
-        for idx, row in enumerate(box_rows):
-            # tier = row.xpath('td/text()').get()
-            tier = row.xpath('td[contains(@class, "bg_blau_20")]/text()').get()
-            # if tier in [
-            #   'First Tier',
-            #   'Domestic Cup',
-            #   'Domestic Super Cup'
-            # ]:
-            if tier:
-                parameterized_tier = underscore(parameterize(tier))
-            else:
-                competition_href = row.xpath('td/table//td')[1].xpath('a/@href').get()
-                competitions[parameterized_domestic_competitions_tag].append(
-                    {
-                        'type': 'competition',
-                        'tag': domestic_competitions_tag,
-                        'competition_type': parameterized_tier,
-                        'href': competition_href
-                    }
-                )
+            for idx, row in enumerate(box_rows):
+                # tier = row.xpath('td/text()').get()
+                tier = row.xpath('td[contains(@class, "bg_blau_20")]/text()').get()
+                # if tier in [
+                #   'First Tier',
+                #   'Domestic Cup',
+                #   'Domestic Super Cup'
+                # ]:
+                if tier:
+                    parameterized_tier = underscore(parameterize(tier))
+                elif len(row.xpath('td/table//td')) > 1:
+                    competition_href = row.xpath('td/table//td')[1].xpath('a/@href').get()
+                    competition_href_wo_season = re.sub(r'/saison_id/[0-9]{4}', '', competition_href)
+                    competitions[parameterized_domestic_competitions_tag].append(
+                        {
+                            'type': 'competition',
+                            'tag': domestic_competitions_tag,
+                            'competition_type': parameterized_tier,
+                            'href': competition_href_wo_season
+                        }
+                    )
+
+            for competition in competitions[parameterized_domestic_competitions_tag]:
+                yield {
+                    'type': 'competition',
+                    **base,
+                    **competition
+                }
 
         # parse international competitions
 
@@ -176,44 +199,40 @@ class CompetitionsSpider(BaseSpider):
                     'competition_type': parameterized_tier
                 }
 
-        for competition in competitions[parameterized_domestic_competitions_tag]:
-            yield {
-                'type': 'competition',
-                **base,
-                **competition
-            }
-
         # parse national competitions currently not being played
 
-        box = relevant_boxes[inactive_competitions_tag]
-        box_body = box.xpath('div[@class="responsive-table"]//tbody')
-        if box_body:
-            box_body = box_body[0]
-            box_rows = box_body.xpath('tr')
+        if relevant_boxes.get(inactive_competitions_tag):
+            box = relevant_boxes[inactive_competitions_tag]
+            box_body = box.xpath('div[@class="responsive-table"]//tbody')
+            if box_body:
+                box_body = box_body[0]
+                box_rows = box_body.xpath('tr')
 
-            competitions[parameterized_inactive_competitions_tag] = []
+                competitions[parameterized_inactive_competitions_tag] = []
+                parameterized_tier = ''
 
-            for idx, row in enumerate(box_rows):
-                tier = row.xpath('td[contains(@class, "bg_blau_20")]/text()').get()
-                if tier:
-                    parameterized_tier = underscore(parameterize(tier))
-                else:
-                    competition_href = row.xpath('td/table//td')[1].xpath('a/@href').get()
-                    competitions[parameterized_inactive_competitions_tag].append(
-                        {
-                            'type': 'competition',
-                            'competition_type': parameterized_tier,
-                            'href': competition_href
-                        }
-                    )
+                for idx, row in enumerate(box_rows):
+                    tier = row.xpath('td[contains(@class, "bg_blau_20")]/text()').get()
+                    if tier:
+                        parameterized_tier = underscore(parameterize(tier))
+                    else:
+                        competition_href = row.xpath('td/table//td')[1].xpath('a/@href').get()
+                        competition_href_wo_season = re.sub(r'/saison_id/[0-9]{4}', '', competition_href)
+                        competitions[parameterized_inactive_competitions_tag].append(
+                            {
+                                'type': 'competition',
+                                'competition_type': parameterized_tier,
+                                'href': competition_href_wo_season
+                            }
+                        )
 
-            for competition in competitions[parameterized_inactive_competitions_tag]:
-                yield {
-                    'type': 'competition',
-                    'tag': inactive_competitions_tag,
-                    **base,
-                    **competition
-                }
+                for competition in competitions[parameterized_inactive_competitions_tag]:
+                    yield {
+                        'type': 'competition',
+                        'tag': inactive_competitions_tag,
+                        **base,
+                        **competition
+                    }
 
     def closed(self, reason):
 
