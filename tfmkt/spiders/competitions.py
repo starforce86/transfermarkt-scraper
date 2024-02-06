@@ -137,6 +137,8 @@ class CompetitionsSpider(BaseSpider):
 
         # parse domestic competitions
 
+        self.domestic_competitions['parent'] = base['parent']
+
         if relevant_boxes.get(domestic_competitions_tag):
             box = relevant_boxes[domestic_competitions_tag]
             box_body = box.xpath('div[@class="responsive-table"]//tbody')[0]
@@ -158,21 +160,29 @@ class CompetitionsSpider(BaseSpider):
                 elif len(row.xpath('td/table//td')) > 1:
                     competition_href = row.xpath('td/table//td')[1].xpath('a/@href').get()
                     competition_href_wo_season = re.sub(r'/saison_id/[0-9]{4}', '', competition_href)
-                    competitions[parameterized_domestic_competitions_tag].append(
-                        {
+                    # competitions[parameterized_domestic_competitions_tag].append(
+                    #     {
+                    #         'type': 'competition',
+                    #         'tag': domestic_competitions_tag,
+                    #         'competition_type': parameterized_tier,
+                    #         'href': competition_href_wo_season
+                    #     }
+                    # )
+                    if not self.domestic_competitions.get(competition_href_wo_season):
+                        self.domestic_competitions[competition_href_wo_season] = {
                             'type': 'competition',
                             'tag': domestic_competitions_tag,
+                            **base,
                             'competition_type': parameterized_tier,
                             'href': competition_href_wo_season
                         }
-                    )
 
-            for competition in competitions[parameterized_domestic_competitions_tag]:
-                yield {
-                    'type': 'competition',
-                    **base,
-                    **competition
-                }
+            # for competition in competitions[parameterized_domestic_competitions_tag]:
+            #     yield {
+            #         'type': 'competition',
+            #         **base,
+            #         **competition
+            #     }
 
         # parse international competitions
 
@@ -201,6 +211,8 @@ class CompetitionsSpider(BaseSpider):
 
         # parse national competitions currently not being played
 
+        self.inactive_competitions['parent'] = base['parent']
+
         if relevant_boxes.get(inactive_competitions_tag):
             box = relevant_boxes[inactive_competitions_tag]
             box_body = box.xpath('div[@class="responsive-table"]//tbody')
@@ -218,21 +230,29 @@ class CompetitionsSpider(BaseSpider):
                     else:
                         competition_href = row.xpath('td/table//td')[1].xpath('a/@href').get()
                         competition_href_wo_season = re.sub(r'/saison_id/[0-9]{4}', '', competition_href)
-                        competitions[parameterized_inactive_competitions_tag].append(
-                            {
+                        # competitions[parameterized_inactive_competitions_tag].append(
+                        #     {
+                        #         'type': 'competition',
+                        #         'competition_type': parameterized_tier,
+                        #         'href': competition_href_wo_season
+                        #     }
+                        # )
+                        if not self.inactive_competitions.get(competition_href_wo_season):
+                            self.inactive_competitions[competition_href_wo_season] = {
                                 'type': 'competition',
+                                'tag': inactive_competitions_tag,
+                                **base,
                                 'competition_type': parameterized_tier,
                                 'href': competition_href_wo_season
                             }
-                        )
 
-                for competition in competitions[parameterized_inactive_competitions_tag]:
-                    yield {
-                        'type': 'competition',
-                        'tag': inactive_competitions_tag,
-                        **base,
-                        **competition
-                    }
+                # for competition in competitions[parameterized_inactive_competitions_tag]:
+                #     yield {
+                #         'type': 'competition',
+                #         'tag': inactive_competitions_tag,
+                #         **base,
+                #         **competition
+                #     }
 
     def closed(self, reason):
 
@@ -248,3 +268,29 @@ class CompetitionsSpider(BaseSpider):
             }
 
             print(json.dumps(competition))  # TODO: this needs to be yielded too!
+
+        for key in self.domestic_competitions.keys():
+
+            if key == 'parent':
+                continue
+
+            competition = {
+                'type': 'competition',
+                'parent': self.domestic_competitions['parent'],
+                **self.domestic_competitions[key]
+            }
+
+            print(json.dumps(competition))
+
+        for key in self.inactive_competitions.keys():
+
+            if key == 'parent':
+                continue
+
+            competition = {
+                'type': 'competition',
+                'parent': self.inactive_competitions['parent'],
+                **self.inactive_competitions[key]
+            }
+
+            print(json.dumps(competition))

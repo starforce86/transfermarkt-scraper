@@ -1,3 +1,5 @@
+import json
+
 from tfmkt.spiders.common import BaseSpider
 from urllib.parse import unquote, urlparse
 import re
@@ -6,6 +8,8 @@ from scrapy.shell import inspect_response # required for debugging
 
 class ClubsSpider(BaseSpider):
   name = 'clubs'
+
+  clubs = []
 
   def parse(self, response, parent):
     """Parse competition page. From this page we collect all competition's
@@ -40,15 +44,18 @@ class ClubsSpider(BaseSpider):
           href = extract_team_href(row)
           href_strip_season = re.sub('/saison_id/[0-9]{4}$', '', href)
 
-          cb_kwargs = {
-            'base' : {
-              'type': 'club',
-              'href': href_strip_season,
-              'parent': parent
-            }
-          }
+          if href_strip_season not in self.clubs:
+            self.clubs.append(href_strip_season)
 
-          yield response.follow(href, self.parse_details, cb_kwargs=cb_kwargs)
+            cb_kwargs = {
+              'base' : {
+                'type': 'club',
+                'href': href_strip_season,
+                'parent': parent
+              }
+            }
+
+            yield response.follow(href_strip_season, self.parse_details, cb_kwargs=cb_kwargs)
 
   def parse_details(self, response, base):
     """Extract club details from the main page.

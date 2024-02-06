@@ -8,6 +8,8 @@ import json
 class PlayersSpider(BaseSpider):
   name = 'players'
 
+  players = []
+
   def parse(self, response, parent):
       """Parse clubs's page to collect all player's urls.
 
@@ -30,16 +32,18 @@ class PlayersSpider(BaseSpider):
       player_hrefs = players_table.xpath('//table[@class="inline-table"]//td[@class="hauptlink"]/a/@href').getall()
 
       for href in player_hrefs:
+        if href not in self.players:
+          self.players.append(href)
           
-        cb_kwargs = {
-          'base' : {
-            'type': 'player',
-            'href': href,
-            'parent': parent
+          cb_kwargs = {
+            'base' : {
+              'type': 'player',
+              'href': href,
+              'parent': parent
+            }
           }
-        }
 
-        yield response.follow(href, self.parse_details, cb_kwargs=cb_kwargs)
+          yield response.follow(href, self.parse_details, cb_kwargs=cb_kwargs)
 
   def parse_details(self, response, base):
     """Extract player details from the main page.
@@ -108,7 +112,7 @@ class PlayersSpider(BaseSpider):
         )
 
     # parse historical market value from figure
-    attributes['market_value_history'] = self.parse_market_history(response)
+    # attributes['market_value_history'] = self.parse_market_history(response)
 
     attributes['code'] = unquote(urlparse(base["href"]).path.split("/")[1])
 

@@ -1,3 +1,4 @@
+import copy
 import logging
 from io import BufferedReader
 import scrapy
@@ -85,9 +86,14 @@ class BaseSpider(scrapy.Spider):
       # clubs extraction is best done on first_tier competition types only
       # if self.name == 'clubs' and item['competition_type'] != 'first_tier':
       #   continue
-      item['seasoned_href'] = self.seasonize_entrypoin_href(item)
-      applicable_items.append(item)
-
+      if self.name in ['clubs', 'players']:
+        for season in range(2023, 1869, -1):
+          season_item = copy.deepcopy(item)
+          season_item['seasoned_href'] = self.seasonize_entrypoin_href(season_item, season)
+          applicable_items.append(season_item)
+      else:
+        item['seasoned_href'] = self.seasonize_entrypoin_href(item, self.season)
+        applicable_items.append(item)
 
     return [
       Request(
@@ -99,16 +105,16 @@ class BaseSpider(scrapy.Spider):
       for item in applicable_items
     ]
 
-  def seasonize_entrypoin_href(self, item):
+  def seasonize_entrypoin_href(self, item, season):
 
-    season = self.season
+    # season = self.season
 
     if item['type'] == 'club':
       seasonized_href = f"{self.base_url}{item['href']}/saison_id/{season}"
     elif item['type'] == 'competition':
-      if item['competition_type'] == 'first_tier':
+      if item['competition_type'] in ['first_tier', 'second_tier', 'third_tier', 'fourth_tier', 'fifth_tier', 'sixth_tier', 'play_offs', 'regional_championship', 'reserve_league', 'youth_league']:
         seasonized_href = f"{self.base_url}{item['href']}/plus/0?saison_id={season}"
-      elif item['competition_type'] in ['domestic_cup', 'domestic_super_cup']:
+      elif item['competition_type'] in ['domestic_cup', 'domestic_super_cup', 'domestic_youth_cup', 'league_cup', 'further_cup', 'further_super_cup', 'international_youth_cup', 'national_youth_super_cup']:
         seasonized_href = f"{self.base_url}{item['href']}?saison_id={season}".replace("wettbewerb", "pokalwettbewerb")
       else:
         seasonized_href = f"{self.base_url}{item['href']}?saison_id={season}"
