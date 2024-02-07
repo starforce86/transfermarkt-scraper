@@ -112,7 +112,7 @@ class PlayersSpider(BaseSpider):
         )
 
     # parse historical market value from figure
-    attributes['market_value_history'] = self.parse_market_history(response)
+    # attributes['market_value_history'] = self.parse_market_history(response)
 
     attributes['career_stats'] = self.parse_career_stats(response)
     attributes['national_team_career'] = self.parse_national_team_career(response)
@@ -126,7 +126,7 @@ class PlayersSpider(BaseSpider):
       }
     }
     player_id = base["href"].split('/')[-1]
-    yield response.follow(f"https://www.transfermarkt.co.uk/ceapi/transferHistory/list/{player_id}", self.parse_transfer_history, cb_kwargs=cb_kwargs)
+    yield response.follow(f"{self.base_url}/ceapi/transferHistory/list/{player_id}", self.parse_transfer_history, cb_kwargs=cb_kwargs)
 
   def parse_market_history(self, response: Response):
     """
@@ -143,14 +143,27 @@ class PlayersSpider(BaseSpider):
       self.logger.warning("Failed to scrape market value history from %s", response.url)
       return None
 
+  def parse_market_value_history(self, response: Response, base):
+    """
+    Get player's market history
+    """
+    yield {
+      **base,
+      'market_value_history': json.loads(response.text)
+    }
+
   def parse_transfer_history(self, response: Response, base):
     """
     Get player's transfer history
     """
-    yield {
-      **base,
-      'transfer_history': json.loads(response.text)
+    cb_kwargs = {
+      'base': {
+        **base,
+        'transfer_history': json.loads(response.text)
+      }
     }
+    player_id = base["href"].split('/')[-1]
+    yield response.follow(f"{self.base_url}/ceapi/marketValueDevelopment/graph/{player_id}", self.parse_market_value_history, cb_kwargs=cb_kwargs)
 
   def parse_career_stats(self, response: Response):
     """
