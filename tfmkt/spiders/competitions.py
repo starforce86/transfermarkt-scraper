@@ -23,7 +23,7 @@ class CompetitionsSpider(BaseSpider):
               page,
               self.parse_page,
               cb_kwargs={
-                'parent': {**parent, 'page_href': page}
+                'parent': {**parent}
               }
             )
 
