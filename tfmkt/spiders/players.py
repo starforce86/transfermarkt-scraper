@@ -34,7 +34,7 @@ class PlayersSpider(BaseSpider):
       for href in player_hrefs:
         if href not in self.players:
           self.players.append(href)
-          
+
           cb_kwargs = {
             'base' : {
               'type': 'player',
@@ -112,14 +112,21 @@ class PlayersSpider(BaseSpider):
         )
 
     # parse historical market value from figure
-    # attributes['market_value_history'] = self.parse_market_history(response)
+    attributes['market_value_history'] = self.parse_market_history(response)
+
+    attributes['career_stats'] = self.parse_career_stats(response)
+    attributes['national_team_career'] = self.parse_national_team_career(response)
 
     attributes['code'] = unquote(urlparse(base["href"]).path.split("/")[1])
 
-    yield {
-      **base,
-      **attributes
+    cb_kwargs = {
+      'base': {
+        **base,
+        **attributes
+      }
     }
+    player_id = base["href"].split('/')[-1]
+    yield response.follow(f"https://www.transfermarkt.co.uk/ceapi/transferHistory/list/{player_id}", self.parse_transfer_history, cb_kwargs=cb_kwargs)
 
   def parse_market_history(self, response: Response):
     """
@@ -135,3 +142,82 @@ class PlayersSpider(BaseSpider):
     except Exception as err:
       self.logger.warning("Failed to scrape market value history from %s", response.url)
       return None
+
+  def parse_transfer_history(self, response: Response, base):
+    """
+    Get player's transfer history
+    """
+    yield {
+      **base,
+      'transfer_history': json.loads(response.text)
+    }
+
+  def parse_career_stats(self, response: Response):
+    """
+    Parse player's career stats
+    """
+    result = {'list': []}
+    if not (career_stats_box := response.xpath("//div[@data-viewport='Leistungsdaten_Saison']")):
+      return result
+
+    if not (table_rows := career_stats_box.css('table.items tbody tr.odd, table.items tbody tr.even')):
+      return result
+
+    for row in table_rows[0:]:
+      result['list'].append({
+        'competition': {
+          'logo_url': row.xpath('td[1]/img/@src').get(),
+          'href': row.xpath('td[2]/a/@href').get(),
+          'name': row.xpath('td[2]/a/text()').get()
+        },
+        'appearances': {
+          'href': row.xpath('td[3]/a/@href').get(),
+          'number': row.xpath('td[3]/a/text()').get()
+        },
+        'goals': row.xpath('td[4]/text()').get(),
+        'assists': row.xpath('td[5]/text()').get(),
+        'minutes_per_goal': row.xpath('td[6]/text()').get(),
+        'minutes_played': row.xpath('td[7]/text()').get(),
+      })
+    if total_row := career_stats_box.css('table.items tfoot tr'):
+      result['total'] = {
+        'appearances': total_row[0].xpath('td[3]/text()').get(),
+        'goals': total_row[0].xpath('td[4]/text()').get(),
+        'assists': total_row[0].xpath('td[5]/text()').get(),
+        'minutes_per_goal': total_row[0].xpath('td[6]/text()').get(),
+        'minutes_played': total_row[0].xpath('td[7]/text()').get(),
+      }
+    return result
+
+  def parse_national_team_career(self, response: Response):
+    """
+    Parse player's national team career
+    """
+    result = []
+    if not (national_career_box := response.xpath("//div[@data-viewport='Laenderspielkarriere']")):
+      return result
+
+    if not (table_rows := national_career_box.css('div.national-career__row')):
+      return result
+
+    for row in table_rows[1:]:
+      result.append({
+        'nationtal_team': {
+          'country_flag_url': row.xpath('div[2]/img/@data-src').get(),
+          'country_href': row.xpath('div[2]/a/@href').get(),
+          'country_name': row.xpath('div[2]/a/text()').get()
+        },
+        'debut': {
+          'href': row.xpath('div[3]/a/@href').get(),
+          'date': row.xpath('div[3]/a/text()').get()
+        },
+        'matches': {
+          'href': row.xpath('div[4]/a/@href').get(),
+          'number': row.xpath('div[4]/a/text()').get()
+        },
+        'tore': {
+          'href': row.xpath('div[5]/a/@href').get(),
+          'number': row.xpath('div[5]/a/text()').get()
+        },
+      })
+    return result
