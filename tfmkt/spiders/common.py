@@ -86,11 +86,13 @@ class BaseSpider(scrapy.Spider):
       # clubs extraction is best done on first_tier competition types only
       # if self.name == 'clubs' and item['competition_type'] != 'first_tier':
       #   continue
-      if self.name in ['clubs', 'players']:
+      if self.name in ['players']:
         for season in range(2023, 1869, -1):
           season_item = copy.deepcopy(item)
           season_item['seasoned_href'] = self.seasonize_entrypoin_href(season_item, season)
           applicable_items.append(season_item)
+        # item['seasoned_href'] = self.seasonize_entrypoin_href(item, self.season)
+        # applicable_items.append(item)
       else:
         item['seasoned_href'] = self.seasonize_entrypoin_href(item, self.season)
         applicable_items.append(item)
