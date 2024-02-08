@@ -68,7 +68,7 @@ class BaseSpider(scrapy.Spider):
     if season:
       self.season = season
     else:
-      self.season = 2023
+      self.season = 2024
 
     self.entrypoints = parents
 
@@ -87,7 +87,7 @@ class BaseSpider(scrapy.Spider):
       # if self.name == 'clubs' and item['competition_type'] != 'first_tier':
       #   continue
       if self.name in ['players']:
-        for season in range(2023, 1869, -1):
+        for season in range(2024, 1869, -1):
           season_item = copy.deepcopy(item)
           season_item['seasoned_href'] = self.seasonize_entrypoin_href(season_item, season)
           applicable_items.append(season_item)
