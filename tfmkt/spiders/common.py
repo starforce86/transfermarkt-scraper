@@ -11,9 +11,9 @@ import gzip
 import typing
 
 default_base_url = 'https://www.transfermarkt.co.uk'
-# logging.basicConfig(
-#     filename="log.txt", format="%(levelname)s: %(message)s", level=logging.INFO
-# )
+logging.basicConfig(
+    filename="log.txt", format="%(levelname)s: %(message)s", level=logging.INFO
+)
 
 def read_lines(file_name: str, reading_fn: typing.Callable[[str], BufferedReader]) -> typing.List[dict]:
   """A function that reads JSON lines from a file.
@@ -32,7 +32,7 @@ def read_lines(file_name: str, reading_fn: typing.Callable[[str], BufferedReader
   return parents
 
 class BaseSpider(scrapy.Spider):
-  def __init__(self, base_url=None, parents=None, season=None):
+  def __init__(self, base_url=None, parents=None, seasons=None):
 
     if base_url is not None:
       self.base_url = base_url
@@ -65,10 +65,10 @@ class BaseSpider(scrapy.Spider):
       if parent.get('parent') is not None:
         del parent['parent']
 
-    if season:
-      self.season = season
+    if seasons:
+      self.seasons = [int(s.strip()) for s in seasons.split(',') if s.strip()]
     else:
-      self.season = 2024
+      self.seasons = [s for s in range(2024, 1869, -1)]
 
     self.entrypoints = parents
 
@@ -83,19 +83,10 @@ class BaseSpider(scrapy.Spider):
     applicable_items = []
 
     for item in self.entrypoints:
-      # clubs extraction is best done on first_tier competition types only
-      # if self.name == 'clubs' and item['competition_type'] != 'first_tier':
-      #   continue
-      if self.name in ['players']:
-        for season in range(2024, 1869, -1):
-          season_item = copy.deepcopy(item)
-          season_item['seasoned_href'] = self.seasonize_entrypoin_href(season_item, season)
-          applicable_items.append(season_item)
-        # item['seasoned_href'] = self.seasonize_entrypoin_href(item, self.season)
-        # applicable_items.append(item)
-      else:
-        item['seasoned_href'] = self.seasonize_entrypoin_href(item, self.season)
-        applicable_items.append(item)
+      for season in self.seasons:
+        season_item = copy.deepcopy(item)
+        season_item['seasoned_href'] = self.seasonize_entrypoin_href(season_item, season)
+        applicable_items.append(season_item)
 
     return [
       Request(
@@ -108,8 +99,6 @@ class BaseSpider(scrapy.Spider):
     ]
 
   def seasonize_entrypoin_href(self, item, season):
-
-    # season = self.season
 
     if item['type'] == 'club':
       seasonized_href = f"{self.base_url}{item['href']}/saison_id/{season}"

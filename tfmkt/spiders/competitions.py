@@ -83,7 +83,7 @@ class CompetitionsSpider(BaseSpider):
             yield response.follow(self.base_url + href, self.parse_seasons, cb_kwargs=cb_kwargs)
 
     def parse_seasons(self, response, base):
-        for season in range(2024, 1869, -1):
+        for season in self.seasons:
             href = f"/wettbewerbe/national/wettbewerbe/{base['country_id']}/plus/0?saison_id={season}"
             yield response.follow(
                 self.base_url + href,
