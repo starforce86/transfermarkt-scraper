@@ -217,7 +217,7 @@ class PlayersSpider(BaseSpider):
       result.append({
         'nationtal_team': {
           'country_flag_url': row.xpath('div[2]/img/@data-src').get(),
-          'country_href': row.xpath('div[2]/a/@href').get(),
+          'club_href': row.xpath('div[2]/a/@href').get(),
           'country_name': row.xpath('div[2]/a/text()').get()
         },
         'debut': {

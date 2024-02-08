@@ -176,6 +176,13 @@ class CompetitionsSpider(BaseSpider):
                             'competition_type': parameterized_tier,
                             'href': competition_href_wo_season
                         }
+                        yield {
+                            'type': 'competition',
+                            'tag': domestic_competitions_tag,
+                            **base,
+                            'competition_type': parameterized_tier,
+                            'href': competition_href_wo_season
+                        }
 
             # for competition in competitions[parameterized_domestic_competitions_tag]:
             #     yield {
@@ -202,12 +209,19 @@ class CompetitionsSpider(BaseSpider):
                 # international competitions are saved to the dynamic dict 'international_competitions' rather than "yielded"
                 # this is to avoid emitting duplicated items for international competitions, since the same competitions
                 # appear in multiple country pages
-                self.international_competitions[parameterized_tier] = {
-                    'type': 'competition',
-                    'tag': international_competitions_tag,
-                    'href': competition_href_wo_season,
-                    'competition_type': parameterized_tier
-                }
+                if not self.international_competitions.get(parameterized_tier):
+                    self.international_competitions[parameterized_tier] = {
+                        'type': 'competition',
+                        'tag': international_competitions_tag,
+                        'href': competition_href_wo_season,
+                        'competition_type': parameterized_tier
+                    }
+                    yield {
+                        'type': 'competition',
+                        'tag': international_competitions_tag,
+                        'href': competition_href_wo_season,
+                        'competition_type': parameterized_tier
+                    }
 
         # parse national competitions currently not being played
 
@@ -245,6 +259,13 @@ class CompetitionsSpider(BaseSpider):
                                 'competition_type': parameterized_tier,
                                 'href': competition_href_wo_season
                             }
+                            yield {
+                                'type': 'competition',
+                                'tag': inactive_competitions_tag,
+                                **base,
+                                'competition_type': parameterized_tier,
+                                'href': competition_href_wo_season
+                            }
 
                 # for competition in competitions[parameterized_inactive_competitions_tag]:
                 #     yield {
@@ -254,43 +275,43 @@ class CompetitionsSpider(BaseSpider):
                 #         **competition
                 #     }
 
-    def closed(self, reason):
-
-        for key in self.international_competitions.keys():
-
-            if key == 'parent':
-                continue
-
-            competition = {
-                'type': 'competition',
-                'parent': self.international_competitions['parent'],
-                **self.international_competitions[key]
-            }
-
-            print(json.dumps(competition))
-
-        for key in self.domestic_competitions.keys():
-
-            if key == 'parent':
-                continue
-
-            competition = {
-                'type': 'competition',
-                'parent': self.domestic_competitions['parent'],
-                **self.domestic_competitions[key]
-            }
-
-            print(json.dumps(competition))
-
-        for key in self.inactive_competitions.keys():
-
-            if key == 'parent':
-                continue
-
-            competition = {
-                'type': 'competition',
-                'parent': self.inactive_competitions['parent'],
-                **self.inactive_competitions[key]
-            }
-
-            print(json.dumps(competition))
+    # def closed(self, reason):
+    #
+    #     for key in self.international_competitions.keys():
+    #
+    #         if key == 'parent':
+    #             continue
+    #
+    #         competition = {
+    #             'type': 'competition',
+    #             'parent': self.international_competitions['parent'],
+    #             **self.international_competitions[key]
+    #         }
+    #
+    #         print(json.dumps(competition))
+    #
+    #     for key in self.domestic_competitions.keys():
+    #
+    #         if key == 'parent':
+    #             continue
+    #
+    #         competition = {
+    #             'type': 'competition',
+    #             'parent': self.domestic_competitions['parent'],
+    #             **self.domestic_competitions[key]
+    #         }
+    #
+    #         print(json.dumps(competition))
+    #
+    #     for key in self.inactive_competitions.keys():
+    #
+    #         if key == 'parent':
+    #             continue
+    #
+    #         competition = {
+    #             'type': 'competition',
+    #             'parent': self.inactive_competitions['parent'],
+    #             **self.inactive_competitions[key]
+    #         }
+    #
+    #         print(json.dumps(competition))

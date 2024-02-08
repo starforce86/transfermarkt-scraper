@@ -11,9 +11,9 @@ import gzip
 import typing
 
 default_base_url = 'https://www.transfermarkt.co.uk'
-logging.basicConfig(
-    filename="log.txt", format="%(levelname)s: %(message)s", level=logging.INFO
-)
+# logging.basicConfig(
+#     filename="log.txt", format="%(levelname)s: %(message)s", level=logging.INFO
+# )
 
 def read_lines(file_name: str, reading_fn: typing.Callable[[str], BufferedReader]) -> typing.List[dict]:
   """A function that reads JSON lines from a file.
